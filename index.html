@@ -74,7 +74,7 @@
             outputDiv.innerText = data.text;
             reviewDiv.innerText = data.reviewNotes; // Shows the critique step
         } catch (err) {
-            outputDiv.innerText = "Error: Check your Lambda URL and CORS settings.";
+            outputDiv.innerText = `Error:${err}.`;
         } finally {
             btn.disabled = false;
             btn.innerText = "Generate & Review";
@@ -89,4 +89,5 @@
 </script>
 
 </body>
+
 </html>
