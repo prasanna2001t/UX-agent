@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Technical Writer AI Agent</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f7f6; font-family: 'Inter', sans-serif; }
+        .card { border: none; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        #output { min-height: 400px; white-space: pre-wrap; background: #fff; }
+        .review-box { font-size: 0.85rem; color: #6c757d; font-style: italic; }
+    </style>
+</head>
+<body>
+
+<div class="container py-5">
+    <div class="text-center mb-5">
+        <h1 class="fw-bold">AI Technical Writer</h1>
+        <p class="text-muted">Converting raw notes into professional documentation</p>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-5">
+            <div class="card p-4 h-100">
+                <label class="form-label fw-bold">Raw Notes / Engineering Input</label>
+                <textarea id="userInput" class="form-control flex-grow-1 mb-3" style="height: 350px;" placeholder="Paste your rough notes here..."></textarea>
+                <button id="genBtn" onclick="runAgent()" class="btn btn-dark btn-lg">Generate & Review</button>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            <div class="card p-4 h-100">
+                <label class="form-label fw-bold">Final Polished Document</label>
+                <div id="output" class="p-3 border rounded mb-3">Your content will appear here...</div>
+                
+                <div class="mt-2">
+                    <h6>Editor's Critique:</h6>
+                    <div id="reviewNotes" class="review-box p-2 bg-light rounded">The AI's self-review notes will show up here.</div>
+                </div>
+
+                <button onclick="copyToClipboard()" class="btn btn-outline-primary mt-4">Copy Final Markdown</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function runAgent() {
+        const notes = document.getElementById('userInput').value;
+        const outputDiv = document.getElementById('output');
+        const reviewDiv = document.getElementById('reviewNotes');
+        const btn = document.getElementById('genBtn');
+
+        if (!notes) return alert("Please enter some notes first!");
+
+        // UI Feedback
+        btn.disabled = true;
+        btn.innerText = "Agent is Thinking (Drafting -> Reviewing -> Refining)...";
+        outputDiv.innerText = "Processing through 3 stages of refinement...";
+
+        try {
+            // REPLACE with your Lambda Function URL
+            const LAMBDA_URL = "YOUR_LAMBDA_FUNCTION_URL";
+
+            const response = await fetch(LAMBDA_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ notes: notes })
+            });
+
+            const data = await response.json();
+            
+            outputDiv.innerText = data.text;
+            reviewDiv.innerText = data.reviewNotes; // Shows the critique step
+        } catch (err) {
+            outputDiv.innerText = "Error: Check your Lambda URL and CORS settings.";
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "Generate & Review";
+        }
+    }
+
+    function copyToClipboard() {
+        const text = document.getElementById('output').innerText;
+        navigator.clipboard.writeText(text);
+        alert("Copied to clipboard!");
+    }
+</script>
+
+</body>
+</html>
