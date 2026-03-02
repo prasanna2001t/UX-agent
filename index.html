@@ -57,15 +57,15 @@
 
             // LOGIC CHECK: Is it HTML or JSON?
             const contentType = response.headers.get("content-type");
-            if (contentType && contentType.includes("application/json")) {
-                const data = await response.json();
-                outputDiv.innerText = data.text;
-                reviewDiv.innerText = data.reviewNotes;
-            } else {
-                const htmlError = await response.text();
-                console.error("AWS sent HTML instead of JSON:", htmlError);
-                outputDiv.innerHTML = `<div class="text-danger">AWS Error: Received HTML. Check Lambda CORS/Auth settings.</div>`;
-            }
+           if (contentType && contentType.includes("application/json")) {
+                    const data = await response.json();
+                    console.log("Data received:", data);
+                    outputDiv.innerText = data.text;
+                } else {
+                    const rawText = await response.text();
+                    console.error("Non-JSON Response received:", rawText);
+                    outputDiv.innerHTML = `<b class="text-danger">Error:</b> Received HTML/Text instead of JSON. Check Lambda logs.`;
+                }
 
         } catch (err) {
             outputDiv.innerText = "Fetch Error: " + err.message;
@@ -78,3 +78,4 @@
 </script>
 </body>
 </html>
+
