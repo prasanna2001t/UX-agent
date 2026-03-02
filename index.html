@@ -6,8 +6,15 @@
     <title>AI Technical Writer Agent</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background-color: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        /* 1. Change Font Globally */
+        body { 
+            background-color: #f0f2f5; 
+            font-family: 'Inter', -apple-system, system-ui, sans-serif; 
+        }
+
         .card { border: none; border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
+        
+        /* 2. Style the Response Area */
         #output { 
             min-height: 400px; 
             background: #ffffff; 
@@ -15,9 +22,17 @@
             border-radius: 8px; 
             padding: 20px; 
             white-space: pre-wrap; 
-            font-family: 'Courier New', Courier, monospace;
+            font-family: 'Inter', sans-serif; /* Clean font for results */
+            font-size: 15px;
+            line-height: 1.6;
+            color: #333;
         }
+
         .loading-spinner { display: none; margin-left: 10px; }
+        
+        /* Progress Bar Styling */
+        .progress { height: 8px; display: none; border-radius: 10px; }
+        #progressText { font-size: 0.85rem; font-weight: 500; }
     </style>
 </head>
 <body>
@@ -44,6 +59,12 @@
         <div class="col-lg-7">
             <div class="card p-4 h-100">
                 <h5 class="mb-3">Refined Documentation</h5>
+
+                <div id="progressText" class="text-muted mb-2"></div>
+                <div class="progress mb-3" id="progressContainer">
+                    <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" style="width: 0%"></div>
+                </div>
+
                 <div id="output">Your polished content will appear here...</div>
                 
                 <div class="mt-4">
@@ -66,21 +87,37 @@
         const reviewDiv = document.getElementById('reviewNotes');
         const btn = document.getElementById('genBtn');
         const spinner = document.getElementById('spinner');
+        
+        // Added: Progress bar elements
+        const progressBar = document.getElementById('progressBar');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressText = document.getElementById('progressText');
 
         if (!notes.trim()) return alert("Please enter some notes first!");
 
         // UI Setup
         btn.disabled = true;
         spinner.style.display = "inline-block";
-        outputDiv.innerText = "Agent is working (Running single-pass optimization)...";
+        outputDiv.innerText = "Agent is working...";
         reviewDiv.innerText = "Analyzing notes...";
 
-        try {
-            // YOUR CURRENT LAMBDA URL
-            const LAMBDA_URL = "https://yk2tf47ong3um7xxo2fgzhob7e0qaajx.lambda-url.ap-south-1.on.aws/";
+        // Show loading state
+        progressContainer.style.display = 'flex';
+        let width = 0;
+        
+        // "Fake" progress steps
+        const progressInterval = setInterval(() => {
+            if (width < 90) {
+                width += 1;
+                progressBar.style.width = width + '%';
+                if (width < 30) progressText.innerText = "Drafting initial guide...";
+                else if (width < 60) progressText.innerText = "Critiquing for technical accuracy...";
+                else progressText.innerText = "Refining final markdown...";
+            }
+        }, 150); 
 
-            console.log("--- STARTING FETCH ---");
-            console.log("Target URL:", LAMBDA_URL);
+        try {
+            const LAMBDA_URL = "https://yk2tf47ong3um7xxo2fgzhob7e0qaajx.lambda-url.ap-south-1.on.aws/";
 
             const response = await fetch(LAMBDA_URL, {
                 method: 'POST',
@@ -88,29 +125,28 @@
                 body: JSON.stringify({ notes: notes })
             });
 
-            console.log("Response Status:", response.status);
-            
-            // Check content type to catch "Double CORS" or AWS HTML errors
-            const contentType = response.headers.get("content-type");
-            console.log("Content-Type Header:", contentType);
+            // Handle progress completion
+            clearInterval(progressInterval);
+            progressBar.style.width = '100%';
+            progressText.innerText = "Generation Complete!";
+            setTimeout(() => { progressContainer.style.display = 'none'; progressText.innerText = ""; }, 2500);
 
+            const contentType = response.headers.get("content-type");
             if (contentType && contentType.includes("application/json")) {
                 const data = await response.json();
-                console.log("Data Received:", data);
-                
                 outputDiv.innerText = data.text || "No text generated.";
                 reviewDiv.innerText = data.reviewNotes || "Refinement complete.";
             } else {
-                // If it's not JSON, it's likely an AWS HTML Error Page (CORS or 500)
                 const errorBody = await response.text();
-                console.error("Non-JSON Response Body:", errorBody);
-                throw new Error("Received HTML instead of JSON. Check your Lambda logs and ensure AWS CORS toggle is OFF.");
+                throw new Error("Received HTML instead of JSON. Check Lambda logs.");
             }
 
         } catch (err) {
+            clearInterval(progressInterval);
+            progressContainer.style.display = 'none';
             console.error("FETCH ERROR:", err);
             outputDiv.innerHTML = `<span class="text-danger"><b>Error:</b> ${err.message}</span>`;
-            reviewDiv.innerText = "Error details logged in browser console (F12).";
+            reviewDiv.innerText = "Error details logged in console.";
         } finally {
             btn.disabled = false;
             spinner.style.display = "none";
@@ -126,4 +162,3 @@
 
 </body>
 </html>
-
