@@ -3,31 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hi Jaya</title>
+    <title>AI Technical Writer Agent</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background-color: #f8f9fa; }
-        .card { border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
-        #output { background: white; min-height: 300px; border: 1px solid #dee2e6; padding: 15px; border-radius: 8px; white-space: pre-wrap; }
+        body { background-color: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .card { border: none; border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
+        #output { 
+            min-height: 400px; 
+            background: #ffffff; 
+            border: 1px solid #dee2e6; 
+            border-radius: 8px; 
+            padding: 20px; 
+            white-space: pre-wrap; 
+            font-family: 'Courier New', Courier, monospace;
+        }
+        .loading-spinner { display: none; margin-left: 10px; }
     </style>
 </head>
 <body>
+
 <div class="container py-5">
-    <div class="row">
-        <div class="col-md-5">
-            <div class="card p-4">
-                <h5>Input Notes</h5>
-                <textarea id="userInput" class="form-control mb-3" rows="12" placeholder="Paste rough notes..."></textarea>
-                <button id="genBtn" onclick="runAgent()" class="btn btn-primary w-100">Generate & Review</button>
+    <div class="text-center mb-5">
+        <h1 class="display-5 fw-bold text-primary">AI Technical Writer</h1>
+        <p class="text-muted">Drafting, Reviewing, and Refining in one swift pass.</p>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-lg-5">
+            <div class="card p-4 h-100">
+                <h5 class="mb-3">Raw Engineering Notes</h5>
+                <textarea id="userInput" class="form-control flex-grow-1 mb-3" style="height: 350px;" 
+                    placeholder="Paste your rough notes or command here..."></textarea>
+                <button id="genBtn" onclick="runAgent()" class="btn btn-primary btn-lg w-100">
+                    Generate & Refine
+                    <span id="spinner" class="spinner-border spinner-border-sm loading-spinner"></span>
+                </button>
             </div>
         </div>
-        <div class="col-md-7">
-            <div class="card p-4">
-                <h5>Final Document</h5>
-                <div id="output">Results will appear here...</div>
-                <hr>
-                <h6>Critique Applied:</h6>
-                <div id="reviewNotes" class="small text-muted italic">No critique yet.</div>
+
+        <div class="col-lg-7">
+            <div class="card p-4 h-100">
+                <h5 class="mb-3">Refined Documentation</h5>
+                <div id="output">Your polished content will appear here...</div>
+                
+                <div class="mt-4">
+                    <h6 class="text-secondary border-bottom pb-2">Editor's Critique Applied:</h6>
+                    <div id="reviewNotes" class="p-2 text-muted small italic bg-light rounded">
+                        The agent's internal review notes will show up here.
+                    </div>
+                </div>
+
+                <button onclick="copyToClipboard()" class="btn btn-outline-secondary mt-3">Copy Markdown</button>
             </div>
         </div>
     </div>
@@ -39,15 +65,22 @@
         const outputDiv = document.getElementById('output');
         const reviewDiv = document.getElementById('reviewNotes');
         const btn = document.getElementById('genBtn');
+        const spinner = document.getElementById('spinner');
 
-        if (!notes) return alert("Please enter notes!");
+        if (!notes.trim()) return alert("Please enter some notes first!");
 
+        // UI Setup
         btn.disabled = true;
-        btn.innerText = "Agent Working (3 stages)...";
+        spinner.style.display = "inline-block";
+        outputDiv.innerText = "Agent is working (Running single-pass optimization)...";
+        reviewDiv.innerText = "Analyzing notes...";
 
         try {
-            // Update this with your actual Function URL
-            const LAMBDA_URL = "https://yk2tf47ong3um7xxo2fgzhob7e0qaajx.lambda-url.ap-south-1.on.aws";
+            // YOUR CURRENT LAMBDA URL
+            const LAMBDA_URL = "https://yk2tf47ong3um7xxo2fgzhob7e0qaajx.lambda-url.ap-south-1.on.aws/";
+
+            console.log("--- STARTING FETCH ---");
+            console.log("Target URL:", LAMBDA_URL);
 
             const response = await fetch(LAMBDA_URL, {
                 method: 'POST',
@@ -55,28 +88,41 @@
                 body: JSON.stringify({ notes: notes })
             });
 
-            // LOGIC CHECK: Is it HTML or JSON?
+            console.log("Response Status:", response.status);
+            
+            // Check content type to catch "Double CORS" or AWS HTML errors
             const contentType = response.headers.get("content-type");
-           if (contentType && contentType.includes("application/json")) {
-                    const data = await response.json();
-                    console.log("Data received:", data);
-                    outputDiv.innerText = data.text;
-                } else {
-                    const rawText = await response.text();
-                    console.error("Non-JSON Response received:", rawText);
-                    outputDiv.innerHTML = `<b class="text-danger">Error:</b> Received HTML/Text instead of JSON. Check Lambda logs.`;
-                }
+            console.log("Content-Type Header:", contentType);
+
+            if (contentType && contentType.includes("application/json")) {
+                const data = await response.json();
+                console.log("Data Received:", data);
+                
+                outputDiv.innerText = data.text || "No text generated.";
+                reviewDiv.innerText = data.reviewNotes || "Refinement complete.";
+            } else {
+                // If it's not JSON, it's likely an AWS HTML Error Page (CORS or 500)
+                const errorBody = await response.text();
+                console.error("Non-JSON Response Body:", errorBody);
+                throw new Error("Received HTML instead of JSON. Check your Lambda logs and ensure AWS CORS toggle is OFF.");
+            }
 
         } catch (err) {
-            outputDiv.innerText = "Fetch Error: " + err.message;
-            console.error(err);
+            console.error("FETCH ERROR:", err);
+            outputDiv.innerHTML = `<span class="text-danger"><b>Error:</b> ${err.message}</span>`;
+            reviewDiv.innerText = "Error details logged in browser console (F12).";
         } finally {
             btn.disabled = false;
-            btn.innerText = "Generate & Review";
+            spinner.style.display = "none";
         }
     }
+
+    function copyToClipboard() {
+        const text = document.getElementById('output').innerText;
+        navigator.clipboard.writeText(text);
+        alert("Markdown copied to clipboard!");
+    }
 </script>
+
 </body>
 </html>
-
-
