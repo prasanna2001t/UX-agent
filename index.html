@@ -1,38 +1,80 @@
-async function runAgent() {
-    const notes = document.getElementById('userInput').value;
-    const outputDiv = document.getElementById('output');
-    const reviewDiv = document.getElementById('reviewNotes');
-    const btn = document.getElementById('genBtn');
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Tech Writer</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; }
+        .card { border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        #output { background: white; min-height: 300px; border: 1px solid #dee2e6; padding: 15px; border-radius: 8px; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+<div class="container py-5">
+    <div class="row">
+        <div class="col-md-5">
+            <div class="card p-4">
+                <h5>Input Notes</h5>
+                <textarea id="userInput" class="form-control mb-3" rows="12" placeholder="Paste rough notes..."></textarea>
+                <button id="genBtn" onclick="runAgent()" class="btn btn-primary w-100">Generate & Review</button>
+            </div>
+        </div>
+        <div class="col-md-7">
+            <div class="card p-4">
+                <h5>Final Document</h5>
+                <div id="output">Results will appear here...</div>
+                <hr>
+                <h6>Critique Applied:</h6>
+                <div id="reviewNotes" class="small text-muted italic">No critique yet.</div>
+            </div>
+        </div>
+    </div>
+</div>
 
-    if (!notes) return alert("Please enter notes!");
+<script>
+    async function runAgent() {
+        const notes = document.getElementById('userInput').value;
+        const outputDiv = document.getElementById('output');
+        const reviewDiv = document.getElementById('reviewNotes');
+        const btn = document.getElementById('genBtn');
 
-    btn.disabled = true;
-    btn.innerText = "Agent is working...";
+        if (!notes) return alert("Please enter notes!");
 
-    try {
-        const LAMBDA_URL = "https://yk2tf47ong3um7xxo2fgzhob7e0qaajx.lambda-url.ap-south-1.on.aws";
+        btn.disabled = true;
+        btn.innerText = "Agent Working (3 stages)...";
 
-        const response = await fetch(LAMBDA_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ notes: notes })
-        });
+        try {
+            // Update this with your actual Function URL
+            const LAMBDA_URL = "https://yk2tf47ong3um7xxo2fgzhob7e0qaajx.lambda-url.ap-south-1.on.aws";
 
-        // Check if response is JSON or HTML Error
-        const contentType = response.headers.get("content-type");
-        if (contentType && contentType.includes("application/json")) {
-            const data = await response.json();
-            outputDiv.innerText = data.text;
-            reviewDiv.innerText = data.reviewNotes;
-        } else {
-            const rawError = await response.text();
-            throw new Error(`Server returned non-JSON: ${rawError.substring(0, 100)}`);
+            const response = await fetch(LAMBDA_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ notes: notes })
+            });
+
+            // LOGIC CHECK: Is it HTML or JSON?
+            const contentType = response.headers.get("content-type");
+            if (contentType && contentType.includes("application/json")) {
+                const data = await response.json();
+                outputDiv.innerText = data.text;
+                reviewDiv.innerText = data.reviewNotes;
+            } else {
+                const htmlError = await response.text();
+                console.error("AWS sent HTML instead of JSON:", htmlError);
+                outputDiv.innerHTML = `<div class="text-danger">AWS Error: Received HTML. Check Lambda CORS/Auth settings.</div>`;
+            }
+
+        } catch (err) {
+            outputDiv.innerText = "Fetch Error: " + err.message;
+            console.error(err);
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "Generate & Review";
         }
-
-    } catch (err) {
-        outputDiv.innerText = `Error: ${err.message}`;
-    } finally {
-        btn.disabled = false;
-        btn.innerText = "Generate & Review";
     }
-}
+</script>
+</body>
+</html>
