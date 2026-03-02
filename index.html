@@ -66,7 +66,8 @@
             const response = await fetch(LAMBDA_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ notes: notes })
+                body: JSON.stringify({ notes: notes }),
+                timeout:6000
             });
 
             const data = await response.json();
@@ -91,4 +92,5 @@
 </body>
 
 </html>
+
 
