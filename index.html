@@ -63,12 +63,15 @@
             // REPLACE with your Lambda Function URL
             const LAMBDA_URL = "https://yk2tf47ong3um7xxo2fgzhob7e0qaajx.lambda-url.ap-south-1.on.aws";
 
-            const response = await fetch(LAMBDA_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ notes: notes }),
-                timeout:6000
-            });
+            const controller = new AbortController();
+                const id = setTimeout(() => controller.abort(), 60000); // 30 seconds
+
+                const response = await fetch(LAMBDA_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ notes: notes }),
+                    signal: controller.signal // Link the timeout signal
+                });
 
             const data = await response.json();
             
@@ -92,5 +95,6 @@
 </body>
 
 </html>
+
 
 
